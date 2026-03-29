@@ -9,3 +9,4 @@
 # Ralph scripts
 .github/scripts/backpressure.sh
 .github/scripts/ralph.sh
+.github/prompts/ralph.md

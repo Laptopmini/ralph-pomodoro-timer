@@ -2,10 +2,10 @@
 
 # ==============================================================================
 # RALPH LOOP: MULTI-ENGINE WITH TARGETED BACKPRESSURE
-# Supports Anthropic's `claude` and the open-source `opencode`.
-# Default Engine: claude
-# Usage: ./ralph.sh [claude|opencode]
+# Usage: ./ralph.sh [MAX_LOOPS] [--engine claude|opencode]
 # ==============================================================================
+
+set -euo pipefail
 
 # Settings
 ARCHIVE_FOLDER=".prds"
@@ -36,7 +36,7 @@ while [[ "$#" -gt 0 ]]; do
     --engine)
       ENGINE="$2"
       if [[ "$ENGINE" != "claude" && "$ENGINE" != "opencode" ]]; then
-        echo "Error: Unsupported engine '$ENGINE'. Use './ralph.sh --engine claude' or './ralph.sh --engine opencode'."
+        echo "Error: Unsupported engine '$ENGINE'. Use '$0 --engine claude' or '$0 --engine opencode'."
         exit 1
       fi
       shift 2
@@ -131,8 +131,13 @@ $PRD_CONTENT
 
     echo "Handing control to $ENGINE..."
     OUTPUT=""
+    ENGINE_EXIT=0
     if [[ "$ENGINE" == "claude" ]]; then
-        OUTPUT=$(claude -p "$PROMPT")
+        set +e
+        OUTPUT=$(claude -p "$PROMPT" --allowedTools "Read,Edit,Write,Glob,Grep")
+        ENGINE_EXIT=$?
+        set -e
+
         if [[ "$OUTPUT" == *"rate_limit_error"* ]] || [[ "$OUTPUT" == *"insufficient_quota"* ]] || [[ "$OUTPUT" == *"credit balance"* ]]; then
             echo "Claude rate limit exceeded. Waiting for 1 hour..."
             sleep 3600 # 1 hour
@@ -140,7 +145,16 @@ $PRD_CONTENT
             continue
         fi
     else
+        set +e
         OUTPUT=$(opencode run "$PROMPT")
+        ENGINE_EXIT=$?
+        set -e
+    fi
+
+    if [[ $ENGINE_EXIT -ne 0 ]]; then
+        echo "❌ Engine exited with code $ENGINE_EXIT. Retrying..."
+        sleep 5
+        continue
     fi
 
     echo "Agent finished. Extracting proposed state updates..."
@@ -148,8 +162,10 @@ $PRD_CONTENT
     PROPOSED_LEDGER=$(echo "$OUTPUT" | awk '/<ledger>/{flag=1; next} /<\/ledger>/{flag=0} flag')
 
     echo "Running Validation: $TARGETED_TEST"
+    set +e
     TEST_OUTPUT=$(eval "$TARGETED_TEST" 2>&1)
     TEST_EXIT_CODE=$?
+    set -e
 
     if [ $TEST_EXIT_CODE -eq 0 ]; then
         echo "✅ Task passed! Continuing..."
@@ -163,10 +179,10 @@ $PRD_CONTENT
         fi
 
         ESCAPED_TASK=$(echo "$CURRENT_TASK" | sed 's/[]\/$*.^[]/\\&/g')
-        sed -i "s/$ESCAPED_TASK/- [x] ${CURRENT_TASK#*- [ ] }/" PRD.md
+        sed "s/$ESCAPED_TASK/- [x] ${CURRENT_TASK#*- [ ] }/" PRD.md > PRD.md.tmp && mv PRD.md.tmp PRD.md
         
         git add .
-        git commit -m "chore(ai): $ESCAPED_TASK"
+        git commit -m "chore(ai): $CURRENT_TASK"
         
         ERROR_FEEDBACK="" 
     else
@@ -184,10 +200,12 @@ $PRD_CONTENT
         
         Please analyze the error, fix the code, and try again.
         "
+
+        echo "Retrying in 5 seconds... (Ctrl+C to abort)"
+        sleep 5
     fi
 
-    echo "Restarting loop in 3 seconds..."
-    sleep 3
+    echo "Looping..."
 done
 
 echo "👋 Ralph Loop ended!"

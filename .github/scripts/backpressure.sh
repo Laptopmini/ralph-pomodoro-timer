@@ -1,17 +1,52 @@
 #!/bin/bash
 
-LEDGER=$(tail -n 5 .agent-ledger.jsonl)
-PRD=$(cat PRD.md)
+# ==============================================================================
+# BACKPRESSURE GENERATOR: Generate tests based on current PRD
+# Usage: ./backpressure.sh [--engine claude|opencode]
+# ==============================================================================
 
-opencode run "
+set -euo pipefail
+
+LEDGER=$(tail -n 5 .agent-ledger.jsonl || echo "No history.")
+PRD=$(cat PRD.md)
+ENGINE="claude"
+
+while [[ "$#" -gt 0 ]]; do
+  case $1 in
+    --engine)
+      ENGINE="$2"
+      if [[ "$ENGINE" != "claude" && "$ENGINE" != "opencode" ]]; then
+        echo "Error: Unsupported engine '$ENGINE'. Use '$0 --engine claude' or '$0 --engine opencode'."
+        exit 1
+      fi
+      shift 2
+      ;;
+    *)
+      echo "Error: Unknown argument '$1'."
+      echo "Usage: $0 [MAX_LOOPS] [--engine claude|opencode]"
+      exit 1
+      ;;
+  esac
+done
+
+if ! command -v $ENGINE &> /dev/null; then
+    echo "Error: $ENGINE CLI is not installed."
+    exit 1
+fi
+
+PROMPT="
 Read the following PRD. For each unchecked task, generate exactly the files described in that task — no more, no less.
 
 - DO NOT write application source code. Only write config files and test files.
 - Treat each checkbox item as a single atomic unit of work.
   - When finished, each task should have only a single file to execute to validate the task.
+  - If a task includes a `[test: command]` annotation, extract the file path and test runner from it.
+  - The generated test file MUST match the exact path in the annotation (e.g., `[test: npx jest tests/foo.test.ts]` → create `tests/foo.test.ts`).
+  - The test runner specified in the annotation (jest, playwright, etc.) takes precedence over any inference from the task description.
+  - If no `[test: ...]` annotation is present, fall back to inferring the tool, type, and path from the task description.
 - Infer the correct tool and test type from the task description itself:
     - If the task involves a UI, leverage Playwright, write a .spec.ts file.
-    - If the task involves only code logic, leverage Jest, write a .test.js file.
+    - If the task involves only code logic, leverage Jest, write a .test.ts file.
     - If the task involves running a script or CLI tool, either leverage an typechecking or linting tool, or write a small shell script in `scripts/`.
 - Use ONLY data-testid attributes as element selectors. Do not assume class names, routing paths, or component structure beyond what the PRD states.
 - Assert on: visibility, text content, ARIA roles, and keyboard focus where relevant to the task.
@@ -23,13 +58,21 @@ Read the following PRD. For each unchecked task, generate exactly the files desc
 - All generated tests must FAIL if the task is not complete, such as having zero implementation code.
 - Use a beforeEach block for any shared setup (navigation, auth state).
 
+When finished, run the tests and assert non-zero exit code.
+
 --- ARCHITECTURAL HISTORY (Last 5 Entries) ---
 
-$LEDGER_CONTEXT
+$LEDGER
 
 --- PRD ---
 
 $PRD
 "
 
-echo "✅ Tests generated. Please review them, ensure they fail but complete, and then run Ralph."
+if [[ "$ENGINE" == "claude" ]]; then
+    claude -p "$PROMPT" --allowedTools "Read,Write,Glob,Grep"
+else
+    opencode run "$PROMPT"
+fi
+
+echo "✅ Tests generated. Please review them, and then execute the Ralph loop."

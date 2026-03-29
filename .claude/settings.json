@@ -1,14 +1,10 @@
 {
-  "model": "claude-opus-4-6",
   "permissions": {
-    "allowedTools": ["Read", "Edit", "Write", "Glob", "Grep", "LS"],
     "allow": [
       "Bash(git *)",
-      "Bash(npm install *)",
-      "Bash(npm run build)",
-      "Bash(npm run typecheck)",
-      "Bash(npm run test)",
-      "Bash(npx playwright *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
       "Bash(mkdir *)",
       "Bash(touch *)",
       "Bash(mv *)",
@@ -21,19 +17,21 @@
       "Read(*.pem)",
       "Read(*.key)",
       "Read(*.cert)",
-      "Bash(npm start)",
-      "Bash(npm run dev)",
-      "Bash(npx serve *)",
-      "Bash(npx vite)",
-      "Bash(npx next dev)",
       "Bash(rm -rf *)",
       "Read(.prds/*)",
       "Glob(.prds/*)",
       "Grep(.prds/*)",
       "Bash(git reset *)",
-      "Bash(git checkout *)",
       "Bash(git rebase *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(rm src/*)",
+      "Bash(rm tests/*)",
+      "Write(.github/scripts/ralph.sh)",
+      "Edit(.github/scripts/ralph.sh)",
+      "Bash(*.github/scripts/ralph.sh*)",
+      "Write(.github/prompts/ralph.md)",
+      "Edit(.github/prompts/ralph.md)",
+      "Bash(*.github/prompts/ralph.md*)"
     ]
   }
 }
