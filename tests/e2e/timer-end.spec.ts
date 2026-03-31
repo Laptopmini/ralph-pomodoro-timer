@@ -17,7 +17,7 @@ test.describe("Timer End", () => {
     });
 
     // Fast-forward 25 minutes
-    await page.clock.fastForward(25 * 60 * 1000 + 500);
+    await page.clock.runFor("25:00");
 
     const timer = page.locator('[data-testid="timer-display"]');
     await expect(timer).toHaveText("00:00");
@@ -38,7 +38,7 @@ test.describe("Timer End", () => {
     });
 
     // Fast-forward 25 minutes
-    await page.clock.fastForward(25 * 60 * 1000 + 500);
+    await page.clock.runFor("25:00");
 
     const timer = page.locator('[data-testid="timer-display"]');
     await expect(timer).toHaveText("00:00");
