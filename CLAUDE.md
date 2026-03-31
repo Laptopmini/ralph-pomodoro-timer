@@ -12,7 +12,7 @@ The project must be initialized before first use:
 
 ```bash
 nvm use           # Node v24.14.1 (see .nvmrc)
-sh init.sh        # Creates package.json, installs deps, moves init PRD to PRD.md, runs the Ralph Loop, self-destructs
+bash init.sh      # Creates package.json, installs deps, moves init PRD to PRD.md, runs the Ralph Loop, self-destructs
 ```
 
 After init, `npm run ralph` starts the loop for subsequent PRDs.

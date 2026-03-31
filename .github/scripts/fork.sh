@@ -45,6 +45,8 @@ git clone "$NEW_REPO"
 cd "$NAME"
 git remote add upstream "$UPSTREAM"
 
+npm pkg set name="$NAME"
+
 if command -v code &>/dev/null; then
   code .
 fi

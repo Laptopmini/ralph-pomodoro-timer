@@ -10,6 +10,7 @@ set -euo pipefail
 # Settings
 ARCHIVE_FOLDER=".prds"
 LOCK_FILE=".ralph.lock"
+LOG_FILE=".ralph.log"
 
 # Options
 ENGINE="claude"
@@ -24,6 +25,7 @@ if [ -e "$LOCK_FILE" ]; then
 fi
 
 touch "$LOCK_FILE"
+> "$LOG_FILE"  # Truncate the log file
 trap "rm -f $LOCK_FILE" EXIT
 
 if [[ -n "${1:-}" && "${1:-}" != --* ]]; then
@@ -58,6 +60,10 @@ if [ ! -f PRD.md ]; then
     echo "❌ Error: PRD.md not found."
     exit 1
 fi
+
+# Capture all output to the log file
+exec > >(tee -a "$LOG_FILE")
+exec 2>&1
 
 echo "🟢 Starting Ralph Loop for at most $MAX_LOOPS iterations, using $ENGINE..."
 

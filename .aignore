@@ -1,7 +1,8 @@
 # .aignore
 
-# Ralph lock file
+# Ralph files
 .ralph.lock
+.ralph.log
 
 # Ignore the previously generated PRDs archive
 .prds/
